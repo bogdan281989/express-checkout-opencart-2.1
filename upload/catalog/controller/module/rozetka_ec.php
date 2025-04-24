@@ -132,7 +132,9 @@ class ControllerModuleRozetkaEc extends Controller {
 			if(!empty($result['is_success']) && $result['is_success']) {
 				//замовлення успішно оплачено, заповнюємо його дані
 	
-				if($result['operation'] == 'payment') {
+				$status_code = $result['details']['status_code'] ?? '';
+	
+				if($result['operation'] == 'payment' || $status_code == 'transaction_successful') {
 					$order_id = $this->model_module_rozetka_ec->setOrderData($result);
 					
 					$order_status_id = $this->config->get('rozetka_ec_order_status_id');
@@ -144,7 +146,11 @@ class ControllerModuleRozetkaEc extends Controller {
 					
 					$order_status_id = $this->config->get('rozetka_ec_order_refund_status_id');
 				}
-				
+			} elseif(!empty($result['purchase_details'][0]['status_code']) && $result['purchase_details'][0]['status_code'] == 'order_with_postpayment_confirmed') {                
+                //Оплата при отриманні
+                $order_id = $this->model_module_rozetka_ec->setOrderData($result);
+                    
+                $order_status_id = $this->config->get('rozetka_ec_order_post_pay_status_id');
 			} else {				
 				//Невдала оплата замовлення
 				$order_id = $this->model_module_rozetka_ec->setOrderData($result);
@@ -190,6 +196,11 @@ class ControllerModuleRozetkaEc extends Controller {
      * @return bool повертає true або false
      */
 	public function checkStatusPay() {
+		if(!$this->customer->isLogged()) {
+			$this->session->data['guest']['firstname'] = '';
+			$this->session->data['guest']['lastname'] = '';
+		}
+		
 		$json = array();
 		
 		$order_id = !empty($this->request->get['order_id']) ? $this->request->get['order_id'] : false;
@@ -200,6 +211,12 @@ class ControllerModuleRozetkaEc extends Controller {
 			$json['status'] = true;
 		} else {			
 			$json['status'] = false;
+			
+			$order_postpayment = $this->model_module_rozetka_ec->checkOrderPostpayment($order_id);
+            
+            if($order_postpayment) {
+                $json['status'] = true;
+            }
 		}
 		
 		$this->response->addHeader('Content-Type: application/json');
@@ -242,7 +259,7 @@ class ControllerModuleRozetkaEc extends Controller {
      */
 	private function getButtonPay() {
 		$color = $this->config->get('rozetka_ec_button_color');
-		$variant = $this->config->get('rozetka_ec_button_variant');
+		$variant = 'variant_2';
 		$image_path = 'catalog/view/theme/default/image/payment/rozetka_ec/';
 		
 		$data['button_text'] = $this->language->get('text_button_default');
