@@ -8,6 +8,7 @@
 			'index.php?route=module/luxshop_newfastordercart',
 			'index.php?route=octemplates/module/oct_popup_cart',
 			'index.php?route=common/aridius_cart/info',
+			'index.php?route=extension/module/cyber_newfastordercart',
 			'index.php?route=module/cart_popup'
 		];
 		
